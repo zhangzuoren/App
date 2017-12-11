@@ -7,6 +7,12 @@
 //
 
 #import "AppDelegate.h"
+#import "ViewController.h"
+#import <objc/message.h>
+#import "Login.h"
+#import "FaceLogin.h"
+#import "FaceBanding.h"
+#import "UIAlertView+Block.h"
 
 @interface AppDelegate ()
 
@@ -17,7 +23,63 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
+    self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    [[UIApplication sharedApplication] setStatusBarHidden:NO];
+    [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent animated:YES];
+    
+    /* 检查更新 */
+    [self checkUpdate];
+    
+    /* 显示登录页 */
+    [self showLogin];
+    
     return YES;
+}
+-(void)showLogin{
+    self.window.rootViewController=[[UINavigationController alloc] initWithRootViewController:[[Login alloc] init]];
+}
+-(void)showHome{
+    UINavigationController *nav=[[UINavigationController alloc] initWithRootViewController:[[ViewController alloc] init]];
+    self.window.rootViewController=nav;
+}
+-(void)checkUpdate{
+    NSURL *url = [NSURL URLWithString:@"https://www.zjsos.net:3443/tzga/ios-tzga-Updates.txt"];
+    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:10];
+    [NSURLConnection sendAsynchronousRequest:request queue:[NSOperationQueue mainQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
+        if(data){
+            NSDictionary *dict=[NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingAllowFragments error:nil];
+            if(![dict[@"versionName"] isEqualToString:@"1.0"]){
+                NSString *url=dict[@"updateUrl"];
+                [UIAlertView alertWithCallBackBlock:^(NSInteger buttonIndex) {
+                    if(buttonIndex==1){
+                        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
+                    }
+                } title:@"提示" message:@"检测到新版本，是否更新？" cancelButtonName:@"取消" otherButtonTitles:@"确定", nil];
+            }
+        }
+    }];
+}
+
++ (void)progressWKContentViewCrash {
+    if (([[[UIDevice currentDevice] systemVersion] doubleValue] >= 8.0)) {
+        const char *className = @"WKContentView".UTF8String;
+        Class WKContentViewClass = objc_getClass(className);
+        SEL isSecureTextEntry = NSSelectorFromString(@"isSecureTextEntry");
+        SEL secureTextEntry = NSSelectorFromString(@"secureTextEntry");
+        BOOL addIsSecureTextEntry = class_addMethod(WKContentViewClass, isSecureTextEntry, (IMP)isSecureTextEntryIMP, "B@:");
+        BOOL addSecureTextEntry = class_addMethod(WKContentViewClass, secureTextEntry, (IMP)secureTextEntryIMP, "B@:");
+        if (!addIsSecureTextEntry || !addSecureTextEntry) {
+            NSLog(@"WKContentView-Crash->修复失败");
+        }
+    }
+}
+
+BOOL isSecureTextEntryIMP(id sender, SEL cmd) {
+    return NO;
+}
+
+BOOL secureTextEntryIMP(id sender, SEL cmd) {
+    return NO;
 }
 
 
